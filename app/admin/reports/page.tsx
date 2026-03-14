@@ -6,8 +6,6 @@ import {
   getDashboardSummary,
   getLatestProgressRows
 } from "@/lib/db";
-import ExportDocxButton from "@/components/ExportDocxButton";
-import ExportExcelButton from "@/components/ExportExcelButton";
 
 export default async function ReportsPage() {
   const supabase = await createClient();
@@ -15,11 +13,7 @@ export default async function ReportsPage() {
     data: { user }
   } = await supabase.auth.getUser();
 
-  const roleCodes = await getCurrentUserRoleCodes();
-  const canExport =
-    roleCodes.includes("super_admin") ||
-    roleCodes.includes("ward_admin") ||
-    roleCodes.includes("viewer");
+  await getCurrentUserRoleCodes();
 
   const [summary, rows] = await Promise.all([
     getDashboardSummary(),
@@ -36,15 +30,8 @@ export default async function ReportsPage() {
           <section className="card p-5">
             <h1 className="text-2xl font-bold text-stone-900">Báo cáo</h1>
             <p className="mt-2 text-stone-600">
-              Xem tổng hợp tiến độ và xuất báo cáo Word, Excel.
+              Xem tổng hợp tiến độ và dữ liệu báo cáo mới nhất của toàn phường.
             </p>
-
-            {canExport ? (
-              <div className="mt-4 flex flex-wrap gap-3">
-                <ExportExcelButton rows={rows} />
-                <ExportDocxButton rows={rows} summary={summary} />
-              </div>
-            ) : null}
           </section>
 
           <section className="card p-5">
