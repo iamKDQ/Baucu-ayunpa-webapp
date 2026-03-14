@@ -1,21 +1,30 @@
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { AdminTopbar } from "@/components/AdminTopbar";
 import { createClient } from "@/lib/supabase-server";
-import { getCurrentUserRoleCodes, getDashboardSummary, getLatestProgressRows } from "@/lib/db";
+import {
+  getCurrentUserRoleCodes,
+  getDashboardSummary,
+  getLatestProgressRows
+} from "@/lib/db";
 import ExportDocxButton from "@/components/ExportDocxButton";
 import ExportExcelButton from "@/components/ExportExcelButton";
-import { HourlyProgressDashboard } from "@/components/HourlyProgressDashboard";
 
 export default async function ReportsPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
 
-  const [summary, reports, roles] = await Promise.all([
+  const roleCodes = await getCurrentUserRoleCodes();
+  const canExport =
+    roleCodes.includes("super_admin") ||
+    roleCodes.includes("ward_admin") ||
+    roleCodes.includes("viewer");
+
+  const [summary, rows] = await Promise.all([
     getDashboardSummary(),
-    getLatestProgressRows(),
-    getCurrentUserRoleCodes()
+    getLatestProgressRows()
   ]);
-  const canExport = roles.includes("super_admin") || roles.includes("ward_admin") || roles.includes("viewer");
 
   return (
     <main className="min-h-screen bg-stone-100">
@@ -23,68 +32,93 @@ export default async function ReportsPage() {
         <AdminSidebar />
         <div className="space-y-6">
           <AdminTopbar user={user} />
-          <section className="card p-5">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-stone-900">Báo cáo</h1>
-                <p className="mt-2 text-stone-600">
-                  Người được phân quyền xem báo cáo có thể tổng hợp và xuất báo cáo.
-                </p>
-              </div>
-              {canExport ? (
-                <div className="flex gap-3">
-                  <ExportExcelButton />
-                  <ExportDocxButton />
-                </div>
-              ) : null}
-            </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-4">
-              <div className="rounded-2xl bg-stone-50 p-4">
-                <p className="text-sm text-stone-500">Tổng số cử tri</p>
-                <p className="mt-2 text-2xl font-bold text-brand-700">{summary.totalWardVoters}</p>
+          <section className="card p-5">
+            <h1 className="text-2xl font-bold text-stone-900">Báo cáo</h1>
+            <p className="mt-2 text-stone-600">
+              Xem tổng hợp tiến độ và xuất báo cáo Word, Excel.
+            </p>
+
+            {canExport ? (
+              <div className="mt-4 flex flex-wrap gap-3">
+                <ExportExcelButton rows={rows} />
+                <ExportDocxButton rows={rows} summary={summary} />
               </div>
-              <div className="rounded-2xl bg-stone-50 p-4">
-                <p className="text-sm text-stone-500">Đã bỏ phiếu</p>
-                <p className="mt-2 text-2xl font-bold text-brand-700">{summary.totalVoted}</p>
+            ) : null}
+          </section>
+
+          <section className="card p-5">
+            <h2 className="text-lg font-bold text-stone-900">
+              Tóm tắt toàn phường
+            </h2>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                <div className="text-sm text-stone-500">Tổng số cử tri</div>
+                <div className="mt-2 text-2xl font-bold text-stone-900">
+                  {summary.totalWardVoters.toLocaleString("vi-VN")}
+                </div>
               </div>
-              <div className="rounded-2xl bg-stone-50 p-4">
-                <p className="text-sm text-stone-500">Tỷ lệ</p>
-                <p className="mt-2 text-2xl font-bold text-brand-700">{summary.turnoutRate}%</p>
+
+              <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                <div className="text-sm text-stone-500">Đã bỏ phiếu</div>
+                <div className="mt-2 text-2xl font-bold text-stone-900">
+                  {summary.totalVoted.toLocaleString("vi-VN")}
+                </div>
               </div>
-              <div className="rounded-2xl bg-stone-50 p-4">
-                <p className="text-sm text-stone-500">Số báo cáo đã nhập</p>
-                <p className="mt-2 text-2xl font-bold text-brand-700">{reports.length}</p>
+
+              <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                <div className="text-sm text-stone-500">Tỷ lệ</div>
+                <div className="mt-2 text-2xl font-bold text-stone-900">
+                  {summary.turnoutRate}%
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                <div className="text-sm text-stone-500">Đã báo cáo</div>
+                <div className="mt-2 text-2xl font-bold text-stone-900">
+                  {summary.reportedAreas}/{summary.totalAreas}
+                </div>
               </div>
             </div>
           </section>
-<HourlyProgressDashboard mode="admin" />
+
           <section className="card p-5">
-            <h2 className="text-lg font-bold text-stone-900">Chi tiết 11 khu vực</h2>
+            <h2 className="text-lg font-bold text-stone-900">
+              Dữ liệu báo cáo gần nhất
+            </h2>
+
             <div className="mt-4 overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead className="bg-stone-50 text-left text-stone-600">
                   <tr>
+                    <th className="px-4 py-3">ID báo cáo</th>
                     <th className="px-4 py-3">Khu vực</th>
-                    <th className="px-4 py-3">Tổ dân phố</th>
-                    <th className="px-4 py-3">Tổng cử tri</th>
+                    <th className="px-4 py-3">Ngày</th>
+                    <th className="px-4 py-3">Giờ</th>
                     <th className="px-4 py-3">Đã bỏ phiếu</th>
-                    <th className="px-4 py-3">Tỷ lệ</th>
+                    <th className="px-4 py-3">Trạng thái</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {summary.areas.map((area) => {
-                    const rate = area.total_voters ? ((area.voted_count / area.total_voters) * 100).toFixed(2) : "0.00";
-                    return (
-                      <tr key={area.id} className="border-t border-stone-100">
-                        <td className="px-4 py-3 font-medium">KV {area.area_number} - {area.area_name}</td>
-                        <td className="px-4 py-3">{area.neighborhoods.join(", ")}</td>
-                        <td className="px-4 py-3">{area.total_voters}</td>
-                        <td className="px-4 py-3">{area.voted_count}</td>
-                        <td className="px-4 py-3">{rate}%</td>
-                      </tr>
-                    );
-                  })}
+                  {rows.map((row: any) => (
+                    <tr key={row.id} className="border-t border-stone-100">
+                      <td className="px-4 py-3">{row.id}</td>
+                      <td className="px-4 py-3">{row.polling_area_id}</td>
+                      <td className="px-4 py-3">{row.report_date}</td>
+                      <td className="px-4 py-3">{row.report_hour}</td>
+                      <td className="px-4 py-3">{row.voted_count}</td>
+                      <td className="px-4 py-3">{row.status}</td>
+                    </tr>
+                  ))}
+
+                  {rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-stone-500">
+                        Chưa có dữ liệu báo cáo.
+                      </td>
+                    </tr>
+                  ) : null}
                 </tbody>
               </table>
             </div>
