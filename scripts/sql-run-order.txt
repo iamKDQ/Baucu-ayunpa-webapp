@@ -1,0 +1,6 @@
+Chạy SQL theo thứ tự:
+1. supabase/01_schema.sql
+2. supabase/02_rls.sql
+3. supabase/04_profile_trigger.sql
+4. Tạo user trong Authentication
+5. supabase/03_seed_auth_guide.sql (thay UUID thật)

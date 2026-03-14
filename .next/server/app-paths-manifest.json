@@ -1,0 +1,4 @@
+{
+  "/api/hourly-summary/route": "app/api/hourly-summary/route.js",
+  "/page": "app/page.js"
+}
