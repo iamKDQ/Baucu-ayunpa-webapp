@@ -26,6 +26,8 @@ export type AreaRow = {
   is_locked: boolean;
 };
 
+export const REPORT_MILESTONES = [8, 10.5, 14, 18, 21];
+
 export async function getPollingAreas(): Promise<AreaRow[]> {
   try {
     const supabase = await createServerSupabase();
@@ -97,15 +99,23 @@ export async function getDashboardSummary() {
     };
   });
 
-  const totalWardVoters = mapped.reduce((sum, item) => sum + (item.total_voters ?? 0), 0);
-  const totalVoted = mapped.reduce((sum, item) => sum + (item.voted_count ?? 0), 0);
+  const totalWardVoters = mapped.reduce(
+    (sum, item) => sum + (item.total_voters ?? 0),
+    0
+  );
+  const totalVoted = mapped.reduce(
+    (sum, item) => sum + (item.voted_count ?? 0),
+    0
+  );
   const reportedAreas = mapped.filter((item) => item.updated_at).length;
 
   return {
     totalWardVoters: totalWardVoters || kpiSummary.totalWardVoters,
     totalAreas: mapped.length || 11,
     totalVoted,
-    turnoutRate: totalWardVoters ? Number(((totalVoted / totalWardVoters) * 100).toFixed(2)) : 0,
+    turnoutRate: totalWardVoters
+      ? Number(((totalVoted / totalWardVoters) * 100).toFixed(2))
+      : 0,
     reportedAreas,
     pendingAreas: Math.max((mapped.length || 11) - reportedAreas, 0),
     areas: mapped
@@ -174,12 +184,28 @@ export async function getUsersWithAssignments() {
   try {
     const supabase = await createServerSupabase();
 
-    const profilesRes = await supabase.from("profiles").select("id,full_name,phone");
-    const userRolesRes = await supabase.from("user_roles").select("user_id,role_id");
-    const rolesRes = await supabase.from("roles").select("id,code,name");
-    const assignmentsRes = await supabase.from("area_assignments").select("user_id,polling_area_id");
+    const profilesRes = await supabase
+      .from("profiles")
+      .select("id,full_name,phone");
 
-    if (profilesRes.error || userRolesRes.error || rolesRes.error || assignmentsRes.error) {
+    const userRolesRes = await supabase
+      .from("user_roles")
+      .select("user_id,role_id");
+
+    const rolesRes = await supabase
+      .from("roles")
+      .select("id,code,name");
+
+    const assignmentsRes = await supabase
+      .from("area_assignments")
+      .select("user_id,polling_area_id");
+
+    if (
+      profilesRes.error ||
+      userRolesRes.error ||
+      rolesRes.error ||
+      assignmentsRes.error
+    ) {
       console.error("profilesRes.error =", profilesRes.error);
       console.error("userRolesRes.error =", userRolesRes.error);
       console.error("rolesRes.error =", rolesRes.error);
@@ -203,7 +229,9 @@ export async function getUsersWithAssignments() {
 
       const assignedAreas = assignments
         .filter((a: any) => a.user_id === profile.id)
-        .map((a: any) => areas.find((area: any) => area.id === a.polling_area_id))
+        .map((a: any) =>
+          areas.find((area: any) => area.id === a.polling_area_id)
+        )
         .filter(Boolean)
         .map((area: any) => `KV ${area.area_number} - ${area.area_name}`);
 
@@ -267,14 +295,14 @@ export async function getProgressSummaryByHour(
       neighborhoods: area.neighborhoods ?? [],
       voted_count: voted,
       rate,
+      status: row ? "reported" : "missing",
       updated_at: row?.updated_at ?? null,
-      report_hour: row?.report_hour ?? null,
-      report_date: row?.report_date ?? null
+      report_hour: row?.report_hour ?? null
     };
   });
 
-  const totalVoters = rows.reduce((sum, item) => sum + item.total_voters, 0);
-  const totalVoted = rows.reduce((sum, item) => sum + item.voted_count, 0);
+  const totalVoters = rows.reduce((sum, row) => sum + row.total_voters, 0);
+  const totalVoted = rows.reduce((sum, row) => sum + row.voted_count, 0);
   const turnoutRate =
     totalVoters > 0
       ? Number(((totalVoted / totalVoters) * 100).toFixed(2))
@@ -282,11 +310,10 @@ export async function getProgressSummaryByHour(
 
   return {
     selectedHour: effectiveHour,
-    selectedLabel: formatHourLabel(
+    selectedLabel:
       selectedHour === undefined || selectedHour === "current"
-        ? "current"
-        : selectedHour
-    ),
+        ? `Hiện tại (${formatHourLabel(effectiveHour)})`
+        : formatHourLabel(effectiveHour),
     rows,
     totalVoters,
     totalVoted,
@@ -330,6 +357,29 @@ export async function getHourlyOverview() {
 
   return items;
 }
+
+export async function getMissingReportsByMilestone() {
+  const results = await Promise.all(
+    REPORT_MILESTONES.map(async (value) => {
+      const summary = await getProgressSummaryByHour(value);
+
+      return {
+        value,
+        label: formatMilestoneLabel(value),
+        missingAreas: summary.missingAreas
+      };
+    })
+  );
+
+  return results;
+}
+
+export function formatMilestoneLabel(value: number) {
+  if (value === 10.5) return "10h30";
+  if (Number.isInteger(value)) return `${value}h`;
+  return formatHourLabel(value);
+}
+
 export async function isCurrentUserAdmin() {
   const roles = await getCurrentUserRoleCodes();
   return roles.includes("super_admin") || roles.includes("ward_admin");
