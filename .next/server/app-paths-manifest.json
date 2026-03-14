@@ -1,4 +1,17 @@
 {
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin-access-required/page": "app/admin-access-required/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/admin/progress/page": "app/admin/progress/page.js",
+  "/admin/reports/manage/page": "app/admin/reports/manage/page.js",
+  "/admin/areas/page": "app/admin/areas/page.js",
+  "/admin/reports/page": "app/admin/reports/page.js",
+  "/admin/users/page": "app/admin/users/page.js",
   "/api/hourly-summary/route": "app/api/hourly-summary/route.js",
-  "/page": "app/page.js"
+  "/login/page": "app/login/page.js",
+  "/api/health/route": "app/api/health/route.js",
+  "/page": "app/page.js",
+  "/api/reports/docx/route": "app/api/reports/docx/route.js",
+  "/admin/roles/page": "app/admin/roles/page.js",
+  "/missing-reports/page": "app/missing-reports/page.js"
 }
